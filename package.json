@@ -34,13 +34,18 @@
   ],
   "scripts": {
     "install": "node-gyp rebuild",
-    "test": "mocha --exit"
+    "test": "mocha --exit",
+    "release": "release-it",
+    "release:dry": "release-it --dry-run",
+    "release:ci": "release-it --ci"
   },
   "dependencies": {
     "node-addon-api": "^8.0.0"
   },
   "devDependencies": {
+    "@release-it/conventional-changelog": "^10.0.1",
     "mocha": "^10.2.0",
+    "release-it": "^19.0.5",
     "should": "^13.2.3",
     "sinon": "^16.0.0"
   },
