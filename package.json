@@ -1,5 +1,5 @@
 {
-  "name": "@pokusew/pcsclite",
+  "name": "@nonth/pcsclite",
   "version": "0.6.0",
   "description": "Bindings over PC/SC to access Smart Cards",
   "keywords": [
@@ -8,26 +8,16 @@
     "pcsclite",
     "smartcards"
   ],
-  "homepage": "https://github.com/pokusew/node-pcsclite#readme",
+  "homepage": "https://github.com/nonth/node-pcsclite#readme",
   "bugs": {
-    "url": "https://github.com/pokusew/node-pcsclite/issues"
+    "url": "https://github.com/nonth/node-pcsclite/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/pokusew/node-pcsclite.git"
+    "url": "https://github.com/nonth/node-pcsclite.git"
   },
   "license": "ISC",
-  "author": {
-    "name": "Santiago Gimeno",
-    "email": "santiago.gimeno@gmail.com",
-    "url": "https://github.com/santigimeno"
-  },
-  "contributors": [
-    {
-      "name": "Martin Endler",
-      "url": "https://github.com/pokusew"
-    }
-  ],
+  "author": "nonth <nonthz@gmail.com> (https://github.com/nonth)",
   "main": "lib/pcsclite.js",
   "types": "index.d.ts",
   "directories": {
