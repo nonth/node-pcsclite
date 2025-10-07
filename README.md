@@ -51,7 +51,7 @@ Bindings over pcsclite to access Smart Cards. It works in **Linux**, **macOS** a
 
 ## Installation
 
-**Requirements:** **at least Node.js 8 or newer** (see [this FAQ](#which-nodejs-versions-are-supported) for more info)
+**Requirements:** **at least Node.js 18 or newer** (see [this FAQ](#which-nodejs-versions-are-supported) for more info)
 
 1. **Node Native Modules build tools**
 
@@ -288,12 +288,11 @@ At a low level it calls [`SCardCancel`](https://pcsclite.apdu.fr/api/group__API.
 
 **Yes, you can!** It works well.
 
-But please read carefully [Using Native Node Modules](https://electron.atom.io/docs/tutorial/using-native-node-modules/) guide in Electron documentation to fully understand the problematic.
+But please read carefully [Using Native Node Modules](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules) guide in Electron documentation to fully understand the problematic.
 
-**Note**, that because of Node Native Modules, you must build your app on target platform (you must run Windows build on Windows machine, etc.).  
-You can use CI/CD server to build your app for certain platforms.  
-For Windows, I recommend you to use [AppVeyor](https://appveyor.com/).  
-For macOS and Linux build, there are plenty of services to choose from, for example [CircleCI](https://circleci.com/), [Travis CI](https://travis-ci.com/) [CodeShip](https://codeship.com/).
+**Note**, that because of Node Native Modules, you must build your app on target platform (you must run Windows build on Windows machine, etc.).
+You can use CI/CD server to build your app for certain platforms.
+For cross-platform builds, consider using [GitHub Actions](https://github.com/features/actions) which supports Windows, macOS, and Linux runners.
 
 ### Are prebuilt binaries provided?
 
@@ -334,7 +333,9 @@ After reboot, there will be no driver blocking the usb bus anymore, so we can fi
 
 ### Which Node.js versions are supported?
 
-@nonth/pcsclite officially supports the following Node.js versions: **8.x, 9.x, 10.x, 11.x, 12.x, 13.x, 14.x, 16.x, 18.x, 20.x**.
+@nonth/pcsclite officially supports the following Node.js versions: **18.x, 20.x, 22.x** (LTS versions).
+
+Older versions (8.x through 16.x) have reached end-of-life and are no longer supported.
 
 ### Can I use this library in my React Native app?
 
