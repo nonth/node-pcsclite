@@ -49,5 +49,8 @@
     "should": "^13.2.3",
     "sinon": "^16.0.0"
   },
-  "gypfile": true
+  "gypfile": true,
+  "publishConfig": {
+    "access": "public"
+  }
 }
