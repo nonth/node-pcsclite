@@ -1,7 +1,8 @@
 #ifndef PCSCLITE_H
 #define PCSCLITE_H
 
-#include <nan.h>
+#include <napi.h>
+#include <uv.h>
 #ifdef __APPLE__
 #include <PCSC/winscard.h>
 #include <PCSC/wintypes.h>
@@ -9,7 +10,7 @@
 #include <winscard.h>
 #endif
 
-class PCSCLite: public Nan::ObjectWrap {
+class PCSCLite: public Napi::ObjectWrap<PCSCLite> {
 
     struct AsyncResult {
         LONG result;
@@ -21,25 +22,22 @@ class PCSCLite: public Nan::ObjectWrap {
 
     struct AsyncBaton {
         uv_async_t async;
-        Nan::Persistent<v8::Function> callback;
+        Napi::FunctionReference callback;
         PCSCLite *pcsclite;
         AsyncResult *async_result;
+        napi_env env;
     };
 
     public:
 
-        static void init(v8::Local<v8::Object> target);
+        static Napi::Object Init(Napi::Env env, Napi::Object exports);
+        PCSCLite(const Napi::CallbackInfo& info);
+        ~PCSCLite();
 
     private:
 
-        PCSCLite();
-
-        ~PCSCLite();
-
-        static Nan::Persistent<v8::Function> constructor;
-        static NAN_METHOD(New);
-        static NAN_METHOD(Start);
-        static NAN_METHOD(Close);
+        Napi::Value Start(const Napi::CallbackInfo& info);
+        Napi::Value Close(const Napi::CallbackInfo& info);
 
         static void HandleReaderStatusChange(uv_async_t *handle);
         static void HandlerFunction(void* arg);
@@ -56,7 +54,6 @@ class PCSCLite: public Nan::ObjectWrap {
         uv_cond_t m_cond;
         bool m_pnp;
         int m_state;
-        static Nan::AsyncResource *async_resource;
 };
 
 #endif /* PCSCLITE_H */

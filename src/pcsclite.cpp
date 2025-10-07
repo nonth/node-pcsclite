@@ -1,32 +1,27 @@
 #include "pcsclite.h"
 #include "common.h"
+#include <cassert>
 
-using namespace v8;
-using namespace node;
+Napi::Object PCSCLite::Init(Napi::Env env, Napi::Object exports) {
+    Napi::Function func = DefineClass(env, "PCSCLite", {
+        InstanceMethod("start", &PCSCLite::Start),
+        InstanceMethod("close", &PCSCLite::Close)
+    });
 
-Nan::Persistent<Function> PCSCLite::constructor;
+    Napi::FunctionReference* constructor = new Napi::FunctionReference();
+    *constructor = Napi::Persistent(func);
+    env.SetInstanceData(constructor);
 
-Nan::AsyncResource *PCSCLite::async_resource = new Nan::AsyncResource("PCSCLite_StaticAsyncResource");
-
-void PCSCLite::init(Local<Object> target) {
-
-    // Prepare constructor template
-    Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(New);
-    tpl->SetClassName(Nan::New("PCSCLite").ToLocalChecked());
-    tpl->InstanceTemplate()->SetInternalFieldCount(1);
-    // Prototype
-    Nan::SetPrototypeTemplate(tpl, "start", Nan::New<FunctionTemplate>(Start));
-    Nan::SetPrototypeTemplate(tpl, "close", Nan::New<FunctionTemplate>(Close));
-
-
-    constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
-    Nan::Set(target, Nan::New("PCSCLite").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+    exports.Set("PCSCLite", func);
+    return exports;
 }
 
-PCSCLite::PCSCLite(): m_card_context(0),
-                      m_card_reader_state(),
-                      m_status_thread(0),
-                      m_state(0) {
+PCSCLite::PCSCLite(const Napi::CallbackInfo& info)
+    : Napi::ObjectWrap<PCSCLite>(info),
+      m_card_context(0),
+      m_card_reader_state(),
+      m_status_thread(0),
+      m_state(0) {
 
     assert(uv_mutex_init(&m_mutex) == 0);
     assert(uv_cond_init(&m_cond) == 0);
@@ -76,8 +71,9 @@ postServiceCheck:
                                             NULL,
                                             &m_card_context);
     } while(result == SCARD_E_NO_SERVICE || result == SCARD_E_SERVICE_STOPPED);
+
     if (result != SCARD_S_SUCCESS) {
-        Nan::ThrowError(error_msg("SCardEstablishContext", result).c_str());
+        Napi::Error::New(info.Env(), error_msg("SCardEstablishContext", result)).ThrowAsJavaScriptException();
     } else {
         m_card_reader_state.szReader = "\\\\?PnP?\\Notification";
         m_card_reader_state.dwCurrentState = SCARD_STATE_UNAWARE;
@@ -87,7 +83,7 @@ postServiceCheck:
                                       1);
 
         if ((result != SCARD_S_SUCCESS) && (result != (LONG)SCARD_E_TIMEOUT)) {
-            Nan::ThrowError(error_msg("SCardGetStatusChange", result).c_str());
+            Napi::Error::New(info.Env(), error_msg("SCardGetStatusChange", result)).ThrowAsJavaScriptException();
         } else {
             m_pnp = !(m_card_reader_state.dwEventState & SCARD_STATE_UNKNOWN);
         }
@@ -95,7 +91,6 @@ postServiceCheck:
 }
 
 PCSCLite::~PCSCLite() {
-
     if (m_status_thread) {
         SCardCancel(m_card_context);
         assert(uv_thread_join(&m_status_thread) == 0);
@@ -109,87 +104,80 @@ PCSCLite::~PCSCLite() {
     uv_mutex_destroy(&m_mutex);
 }
 
-NAN_METHOD(PCSCLite::New) {
-    Nan::HandleScope scope;
-    PCSCLite* obj = new PCSCLite();
-    obj->Wrap(info.Holder());
-    info.GetReturnValue().Set(info.Holder());
-}
+Napi::Value PCSCLite::Start(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
 
-NAN_METHOD(PCSCLite::Start) {
+    if (info.Length() < 1 || !info[0].IsFunction()) {
+        Napi::TypeError::New(env, "Callback function required").ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
 
-    Nan::HandleScope scope;
-
-    PCSCLite* obj = Nan::ObjectWrap::Unwrap<PCSCLite>(info.This());
-    Local<Function> cb = Local<Function>::Cast(info[0]);
+    Napi::Function cb = info[0].As<Napi::Function>();
 
     AsyncBaton *async_baton = new AsyncBaton();
     async_baton->async.data = async_baton;
-    async_baton->callback.Reset(cb);
-    async_baton->pcsclite = obj;
+    async_baton->callback.Reset();
+    async_baton->callback = Napi::Persistent(cb);
+    async_baton->pcsclite = this;
+    async_baton->env = env;
 
     uv_async_init(uv_default_loop(), &async_baton->async, (uv_async_cb)HandleReaderStatusChange);
-    int ret = uv_thread_create(&obj->m_status_thread, HandlerFunction, async_baton);
+    int ret = uv_thread_create(&m_status_thread, HandlerFunction, async_baton);
     assert(ret == 0);
 
-
+    return env.Undefined();
 }
 
-NAN_METHOD(PCSCLite::Close) {
-
-    Nan::HandleScope scope;
-
-    PCSCLite* obj = Nan::ObjectWrap::Unwrap<PCSCLite>(info.This());
+Napi::Value PCSCLite::Close(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
 
     LONG result = SCARD_S_SUCCESS;
-    if (obj->m_pnp) {
-        if (obj->m_status_thread) {
-            uv_mutex_lock(&obj->m_mutex);
-            if (obj->m_state == 0) {
+    if (m_pnp) {
+        if (m_status_thread) {
+            uv_mutex_lock(&m_mutex);
+            if (m_state == 0) {
                 int ret;
                 int times = 0;
-                obj->m_state = 1;
+                m_state = 1;
                 do {
-                    result = SCardCancel(obj->m_card_context);
-                    ret = uv_cond_timedwait(&obj->m_cond, &obj->m_mutex, 10000000);
+                    result = SCardCancel(m_card_context);
+                    ret = uv_cond_timedwait(&m_cond, &m_mutex, 10000000);
                 } while ((ret != 0) && (++ times < 5));
             }
 
-            uv_mutex_unlock(&obj->m_mutex);
+            uv_mutex_unlock(&m_mutex);
         }
     } else {
-        obj->m_state = 1;
+        m_state = 1;
     }
 
-    if (obj->m_status_thread) {
-        assert(uv_thread_join(&obj->m_status_thread) == 0);
-        obj->m_status_thread = 0;
+    if (m_status_thread) {
+        assert(uv_thread_join(&m_status_thread) == 0);
+        m_status_thread = 0;
     }
 
-    info.GetReturnValue().Set(Nan::New<Number>(result));
+    return Napi::Number::New(env, result);
 }
 
 void PCSCLite::HandleReaderStatusChange(uv_async_t *handle) {
-
-    Nan::HandleScope scope;
-
     AsyncBaton* async_baton = static_cast<AsyncBaton*>(handle->data);
     AsyncResult* ar = async_baton->async_result;
+    Napi::Env env(async_baton->env);
+    Napi::HandleScope scope(env);
 
     if (async_baton->pcsclite->m_state == 1) {
         // Swallow events : Listening thread was cancelled by user.
     } else if ((ar->result == SCARD_S_SUCCESS) ||
                (ar->result == (LONG)SCARD_E_NO_READERS_AVAILABLE)) {
-        const unsigned argc = 2;
-        Local<Value> argv[argc] = {
-            Nan::Undefined(), // argument
-            Nan::CopyBuffer(ar->readers_name, ar->readers_name_length).ToLocalChecked()
+        std::vector<napi_value> argv = {
+            env.Undefined(),
+            Napi::Buffer<char>::Copy(env, ar->readers_name, ar->readers_name_length)
         };
 
-        Nan::Callback(Nan::New(async_baton->callback)).Call(argc, argv, async_resource);
+        async_baton->callback.Call(argv);
     } else {
-        Local<Value> argv[1] = { Nan::Error(ar->err_msg.c_str()) };
-        Nan::Callback(Nan::New(async_baton->callback)).Call(1, argv, async_resource);
+        std::vector<napi_value> argv = { Napi::Error::New(env, ar->err_msg).Value() };
+        async_baton->callback.Call(argv);
     }
 
     // Do exit, after throwing last events
@@ -212,7 +200,6 @@ void PCSCLite::HandleReaderStatusChange(uv_async_t *handle) {
 }
 
 void PCSCLite::HandlerFunction(void* arg) {
-
     LONG result = SCARD_S_SUCCESS;
     AsyncBaton* async_baton = static_cast<AsyncBaton*>(arg);
     PCSCLite* pcsclite = async_baton->pcsclite;
@@ -274,7 +261,6 @@ void PCSCLite::HandlerFunction(void* arg) {
 }
 
 void PCSCLite::CloseCallback(uv_handle_t *handle) {
-
     /* cleanup process */
     AsyncBaton* async_baton = static_cast<AsyncBaton*>(handle->data);
     AsyncResult* ar = async_baton->async_result;
@@ -290,7 +276,6 @@ void PCSCLite::CloseCallback(uv_handle_t *handle) {
 }
 
 LONG PCSCLite::get_card_readers(PCSCLite* pcsclite, AsyncResult* async_result) {
-
     DWORD readers_name_length;
     LPTSTR readers_name;
 
