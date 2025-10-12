@@ -1,18 +1,18 @@
 import { EventEmitter } from "events";
 
-type ConnectOptions = {
+export type ConnectOptions = {
 	share_mode?: number;
 	protocol?: number;
 };
 
-type Status = {
+export type Status = {
 	atr?: Buffer;
 	state: number;
 };
 
-type AnyOrNothing = any | undefined | null;
+export type AnyOrNothing = any | undefined | null;
 
-interface PCSCLite extends EventEmitter {
+export interface PCSCLite extends EventEmitter {
 	on(type: "error", listener: (error: any) => void): this;
 
 	once(type: "error", listener: (error: any) => void): this;
@@ -24,7 +24,7 @@ interface PCSCLite extends EventEmitter {
 	close(): void;
 }
 
-interface CardReader extends EventEmitter {
+export interface CardReader extends EventEmitter {
 	// Share Mode
 	SCARD_SHARE_SHARED: number;
 	SCARD_SHARE_EXCLUSIVE: number;
@@ -108,4 +108,4 @@ interface CardReader extends EventEmitter {
 
 declare function pcsc(): PCSCLite;
 
-export = pcsc;
+export default pcsc;
