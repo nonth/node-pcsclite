@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
 
+## [0.6.2](https://github.com/nonth/node-pcsclite/compare/v0.6.1...v0.6.2) (2025-10-12)
+
+### Code Refactoring
+
+* modernize type definitions to use ES6 export syntax ([a769d66](https://github.com/nonth/node-pcsclite/commit/a769d6663fa28cd55446c34f8352d9c0d4e5efac))
+
 ## 0.6.1 (2025-10-07)
 
 ### Documentation

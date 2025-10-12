@@ -1,6 +1,6 @@
 {
   "name": "@nonth/pcsclite",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Bindings over PC/SC to access Smart Cards",
   "keywords": [
     "nfc",
